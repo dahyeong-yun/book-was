@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import util.HttpRequestUtils;
 
 
 public class RequestHandler extends Thread {
@@ -27,11 +28,18 @@ public class RequestHandler extends Thread {
             // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
             Map<String, String> requestMap = getRequestMap(in);
 
+            // path에 알맞는 서비스 로직 혹은 뷰를 뿌려주는 역할
             String path = requestMap.get("path");
+
+            // TODO path + method + parameter에 따른 처리를 고르는 역할
+
+            // 뷰를 선택 하는 역할
             if("/".equals(path)) path = "/index.html";
             DataOutputStream dos = new DataOutputStream(out);
             byte[] body = Files.readAllBytes(new File("./webapp" + path).toPath());
 //            byte[] body = requestMap.toString().getBytes();
+
+            // 응답 헤더를 생성하는 역할
             response200Header(dos, body.length);
             responseBody(dos, body);
         } catch (IOException e) {
@@ -42,6 +50,7 @@ public class RequestHandler extends Thread {
     private static Map<String, String> getRequestMap(InputStream in) throws IOException {
         Map<String, String> requestMap = new HashMap<>();
 
+        // 입력 스트림을 받는 역할
         InputStreamReader rd = new InputStreamReader(in);
         BufferedReader br = new BufferedReader(rd);
 
@@ -52,12 +61,20 @@ public class RequestHandler extends Thread {
             header.append(line).append("\n");
         }
 
+        // 입력 값에 대해 정제하는 역할
         String result = header.toString();
         String[] tokens = result.split("\n");
 
         String[] info = tokens[0].split(" ");
+        int index = info[1].indexOf("?");
+        String requestPath = info[1].substring(0, index);
+        String params = info[1].substring(index+1);
+
+        Map<String, String> parameterMap = HttpRequestUtils.parseQueryString(params);
+
         requestMap.put("method", info[0]);
-        requestMap.put("path", info[1]);
+        requestMap.put("path", requestPath);
+        // TODO 파라미터를 String Object 형태로 변환하여 저장 -> 이게 컨트롤러에서 지정한 오브젝트로 리플렉션의 형태로 변경
 
         for(int i = 1; i < tokens.length-1; i++) {
             String[] split = tokens[i].split(": ");
